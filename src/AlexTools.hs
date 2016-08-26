@@ -1,12 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 module AlexTools
   ( -- * Lexer Basics
-    initialInput, Input
+    initialInput, Input(..)
   , Lexeme(..)
   , SourcePos(..)
   , SourceRange(..)
   , HasRange(..)
   , (<->)
+  , moveSourcePos
 
     -- * Writing Lexer Actions
   , Action
@@ -46,20 +47,20 @@ data Lexeme t = Lexeme
   { lexemeText  :: !Text
   , lexemeToken :: !t
   , lexemeRange :: !SourceRange
-  }
+  } deriving Show
 
 data SourcePos = SourcePos
   { sourceIndex   :: !Int
   , sourceLine    :: !Int
   , sourceColumn  :: !Int
-  }
+  } deriving Show
 
 -- | Update a 'SourcePos' for a particular matched character
-move :: SourcePos -> Char -> SourcePos
-move p c = SourcePos { sourceIndex  = sourceIndex p + 1
-                     , sourceLine   = newLine
-                     , sourceColumn = newColumn
-                     }
+moveSourcePos :: Char -> SourcePos -> SourcePos
+moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
+                              , sourceLine   = newLine
+                              , sourceColumn = newColumn
+                              }
   where
   line   = sourceLine p
   column = sourceColumn p
@@ -74,7 +75,7 @@ move p c = SourcePos { sourceIndex  = sourceIndex p + 1
 data SourceRange = SourceRange
   { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
-  }
+  } deriving Show
 
 class HasRange t where
   range :: t -> SourceRange
@@ -87,6 +88,10 @@ instance HasRange SourceRange where
 
 instance HasRange (Lexeme t) where
   range = lexemeRange
+
+instance (HasRange a, HasRange b) => HasRange (Either a b) where
+  range (Left x)  = range x
+  range (Right x) = range x
 
 (<->) :: (HasRange a, HasRange b) => a -> b -> SourceRange
 x <-> y = SourceRange { sourceFrom = sourceFrom (range x)
@@ -249,7 +254,7 @@ alexInputPrevChar = inputPrevChar
 makeAlexGetByte :: (Char -> Word8) -> AlexInput -> Maybe (Word8,AlexInput)
 makeAlexGetByte charToByte Input { inputPos = p, inputText = text } =
   do (c,text') <- Text.uncons text
-     let p'  = move p c
+     let p'  = moveSourcePos c p
          x   = charToByte c
          inp = Input { inputPrev     = p
                      , inputPrevChar = c
