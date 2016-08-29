@@ -3,7 +3,7 @@ module AlexTools
   ( -- * Lexer Basics
     initialInput, Input(..)
   , Lexeme(..)
-  , SourcePos(..)
+  , SourcePos(..), startPos, beforeStartPos
   , SourceRange(..)
   , HasRange(..)
   , (<->)
@@ -178,22 +178,23 @@ data Input = Input
 -- | Prepare the text for lexing.
 initialInput :: Text -> Input
 initialInput str = Input
-  { inputPos      = start
-  , inputPrev     = preStart
+  { inputPos      = startPos
+  , inputPrev     = beforeStartPos
   , inputPrevChar = '\n'    -- end of the virtual previous line
   , inputText     = str
   }
-  where
-  start = SourcePos { sourceIndex   = 0
-                    , sourceLine    = 1
-                    , sourceColumn  = 1
-                    }
 
-  preStart = SourcePos { sourceIndex   = -1
-                       , sourceLine    = 0
-                       , sourceColumn  = 0
-                       }
+startPos :: SourcePos
+startPos = SourcePos { sourceIndex   = 0
+                     , sourceLine    = 1
+                     , sourceColumn  = 1
+                     }
 
+beforeStartPos :: SourcePos
+beforeStartPos = SourcePos { sourceIndex   = -1
+                           , sourceLine    = 0
+                           , sourceColumn  = 0
+                           }
 
 
 --------------------------------------------------------------------------------
