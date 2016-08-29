@@ -47,13 +47,13 @@ data Lexeme t = Lexeme
   { lexemeText  :: !Text
   , lexemeToken :: !t
   , lexemeRange :: !SourceRange
-  } deriving Show
+  } deriving (Show, Eq)
 
 data SourcePos = SourcePos
   { sourceIndex   :: !Int
   , sourceLine    :: !Int
   , sourceColumn  :: !Int
-  } deriving Show
+  } deriving (Show, Eq)
 
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
@@ -75,7 +75,7 @@ moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
 data SourceRange = SourceRange
   { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
-  } deriving Show
+  } deriving (Show, Eq)
 
 class HasRange t where
   range :: t -> SourceRange
@@ -200,7 +200,10 @@ beforeStartPos = SourcePos { sourceIndex   = -1
 --------------------------------------------------------------------------------
 -- | Lexer configuration.
 data LexerConfig s t = LexerConfig
-  { lexerStateMode :: s -> Int
+  { lexerInitialState :: s
+    -- ^ State that the lexer starts in
+
+  , lexerStateMode :: s -> Int
     -- ^ Determine the current lexer mode from the lexer's state.
 
   , lexerEOF       :: s -> [Lexeme t]
@@ -209,9 +212,10 @@ data LexerConfig s t = LexerConfig
 
 -- | A lexer that uses no lexer-modes, and does not emit anything at the
 -- end of the file.
-simpleLexer :: LexerConfig s t
+simpleLexer :: LexerConfig () t
 simpleLexer = LexerConfig
-  { lexerStateMode = \_ -> 0
+  { lexerInitialState = ()
+  , lexerStateMode = \_ -> 0
   , lexerEOF       = \_ -> []
   }
 
@@ -235,14 +239,14 @@ makeLexer =
 
      [e| \cfg ->
 
-         let go inp mode =
+         let go mode inp =
                case $alexScanUser mode inp (lexerStateMode cfg mode) of
                  $alexEOF   -> lexerEOF cfg mode
                  $alexError -> error "language-lua lexer internal error"
-                 $alexSkip  -> go $xE mode
+                 $alexSkip  -> go mode $xE
                  $alexToken -> case runA $zE inp $xE $yE mode of
-                                 (mode', ts) -> ts ++ go $xE mode'
-         in go
+                                 (mode', ts) -> ts ++ go mode' $xE
+         in go (lexerInitialState cfg)
 
       |]
 
