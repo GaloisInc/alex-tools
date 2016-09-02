@@ -18,9 +18,9 @@ cabal-version:       >=1.10
 library
   exposed-modules:     AlexTools
   other-extensions:    TemplateHaskell
-  build-depends:       base >=4.8 && <4.10,
+  build-depends:       base >=4.7 && <4.10,
                        text >=1.2 && <1.3,
-                       template-haskell >=2.10 && <2.12
+                       template-haskell >=2.9.0 && <2.12
   hs-source-dirs:      src
   ghc-options:         -Wall
   default-language:    Haskell2010

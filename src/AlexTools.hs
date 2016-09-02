@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, CPP #-}
 module AlexTools
   ( -- * Lexer Basics
     initialInput, Input(..)
@@ -42,6 +42,9 @@ import           Data.Text(Text)
 import qualified Data.Text as Text
 import           Control.Monad(liftM,ap,replicateM)
 import           Language.Haskell.TH
+#if !MIN_VERSION_base(4,8,0)
+import           Control.Applicative
+#endif
 
 data Lexeme t = Lexeme
   { lexemeText  :: !Text
@@ -112,6 +115,7 @@ instance Applicative (Action s) where
   (<*>)  = ap
 
 instance Monad (Action s) where
+  return = pure
   A m >>= f = A (\i1 i2 l s -> let (s1,a)    = m i1 i2 l s
                                    A m1 =  f a
                                in m1 i1 i2 l s1)
@@ -236,19 +240,18 @@ makeLexer =
          alexToken      = conP (mkName "AlexToken") [ xP, yP, zP ]
          alexScanUser   = varE (mkName "alexScanUser")
 
+     let p ~> e = match p (normalB e) []
+         body go mode inp cfg =
+           caseE [| $alexScanUser $mode $inp (lexerStateMode $cfg $mode) |]
+             [ alexEOF   ~> [| lexerEOF $cfg $mode |]
+             , alexError ~> [| error "language-lua lexer internal error" |]
+             , alexSkip  ~> [| $go $mode $xE |]
+             , alexToken ~> [| case runA $zE $inp $xE $yE $mode of
+                                 (mode', ts) -> ts ++ $go mode' $xE |]
+             ]
 
-     [e| \cfg ->
-
-         let go mode inp =
-               case $alexScanUser mode inp (lexerStateMode cfg mode) of
-                 $alexEOF   -> lexerEOF cfg mode
-                 $alexError -> error "language-lua lexer internal error"
-                 $alexSkip  -> go mode $xE
-                 $alexToken -> case runA $zE inp $xE $yE mode of
-                                 (mode', ts) -> ts ++ go mode' $xE
-         in go (lexerInitialState cfg)
-
-      |]
+     [e| \cfg -> let go mode inp = $(body [|go|] [|mode|] [|inp|] [|cfg|])
+                 in go (lexerInitialState cfg) |]
 
 type AlexInput = Input
 
