@@ -37,6 +37,7 @@ module AlexTools
 
   ) where
 
+import           Control.DeepSeq
 import           Data.Word(Word8)
 import           Data.Text(Text)
 import qualified Data.Text as Text
@@ -52,11 +53,17 @@ data Lexeme t = Lexeme
   , lexemeRange :: !SourceRange
   } deriving (Show, Eq)
 
+instance NFData t => NFData (Lexeme t) where
+  rnf (Lexeme x y z) = rnf (x,y,z)
+
 data SourcePos = SourcePos
   { sourceIndex   :: !Int
   , sourceLine    :: !Int
   , sourceColumn  :: !Int
   } deriving (Show, Eq)
+
+instance NFData SourcePos where
+  rnf (SourcePos x y z) = rnf (x,y,z)
 
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
@@ -79,6 +86,9 @@ data SourceRange = SourceRange
   { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
   } deriving (Show, Eq)
+
+instance NFData SourceRange where
+  rnf (SourceRange x y) = rnf (x,y)
 
 class HasRange t where
   range :: t -> SourceRange
