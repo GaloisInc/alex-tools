@@ -235,7 +235,7 @@ simpleLexer = LexerConfig
 
 
 -- | Generate a function to use an Alex lexer.
--- The expression is of type @LexerConfig s t -> Input -> s -> [Lexeme t]@
+-- The expression is of type @LexerConfig s t -> Input -> [Lexeme t]@
 makeLexer :: ExpQ
 makeLexer =
   do let local = do n <- newName "x"
