@@ -5,6 +5,7 @@ module AlexTools
   , Lexeme(..)
   , SourcePos(..), startPos, beforeStartPos
   , SourceRange(..)
+  , prettySourcePos, prettySourceRange
   , HasRange(..)
   , (<->)
   , moveSourcePos
@@ -58,6 +59,9 @@ data SourcePos = SourcePos
   , sourceColumn  :: !Int
   } deriving (Show, Eq)
 
+prettySourcePos :: SourcePos -> String
+prettySourcePos x = show (sourceLine x) ++ ":" ++ show (sourceColumn x)
+
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
 moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
@@ -79,6 +83,10 @@ data SourceRange = SourceRange
   { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
   } deriving (Show, Eq)
+
+prettySourceRange :: SourceRange -> String
+prettySourceRange x = prettySourcePos (sourceFrom x) ++ "--" ++
+                      prettySourcePos (sourceTo x)
 
 class HasRange t where
   range :: t -> SourceRange
