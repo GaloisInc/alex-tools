@@ -38,6 +38,7 @@ module AlexTools
 
   ) where
 
+import           Control.DeepSeq
 import           Data.Word(Word8)
 import           Data.Text(Text)
 import qualified Data.Text as Text
@@ -53,6 +54,9 @@ data Lexeme t = Lexeme
   , lexemeRange :: !SourceRange
   } deriving (Show, Eq)
 
+instance NFData t => NFData (Lexeme t) where
+  rnf (Lexeme x y z) = rnf (x,y,z)
+
 data SourcePos = SourcePos
   { sourceIndex   :: !Int
   , sourceLine    :: !Int
@@ -61,6 +65,10 @@ data SourcePos = SourcePos
 
 prettySourcePos :: SourcePos -> String
 prettySourcePos x = show (sourceLine x) ++ ":" ++ show (sourceColumn x)
+
+
+instance NFData SourcePos where
+  rnf (SourcePos x y z) = rnf (x,y,z)
 
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
@@ -87,6 +95,9 @@ data SourceRange = SourceRange
 prettySourceRange :: SourceRange -> String
 prettySourceRange x = prettySourcePos (sourceFrom x) ++ "--" ++
                       prettySourcePos (sourceTo x)
+
+instance NFData SourceRange where
+  rnf (SourceRange x y) = rnf (x,y)
 
 class HasRange t where
   range :: t -> SourceRange
@@ -233,7 +244,7 @@ simpleLexer = LexerConfig
 
 
 -- | Generate a function to use an Alex lexer.
--- The expression is of type @LexerConfig s t -> Input -> s -> [Lexeme t]@
+-- The expression is of type @LexerConfig s t -> Input -> [Lexeme t]@
 makeLexer :: ExpQ
 makeLexer =
   do let local = do n <- newName "x"
