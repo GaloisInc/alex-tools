@@ -263,7 +263,7 @@ makeLexer =
          body go mode inp cfg =
            caseE [| $alexScanUser $mode $inp (lexerStateMode $cfg $mode) |]
              [ alexEOF   ~> [| lexerEOF $cfg $mode |]
-             , alexError ~> [| error "language-lua lexer internal error" |]
+             , alexError ~> [| error "internal error in lexer (AlexTools.hs)" |]
              , alexSkip  ~> [| $go $mode $xE |]
              , alexToken ~> [| case runA $zE $inp $xE $yE $mode of
                                  (mode', ts) -> ts ++ $go mode' $xE |]
