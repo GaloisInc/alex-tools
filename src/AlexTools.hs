@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, CPP #-}
+{-# language TemplateHaskell, CPP, RecordWildCards #-}
 module AlexTools
   ( -- * Lexer Basics
     initialInput, Input(..)
@@ -35,6 +35,10 @@ module AlexTools
   , LexerConfig(..)
   , simpleLexer
   , Word8
+
+    -- * Helpers for writing Layout
+  , Layout(..)
+  , layout
 
   ) where
 
@@ -290,5 +294,71 @@ makeAlexGetByte charToByte Input { inputPos = p, inputText = text } =
                      }
      x `seq` inp `seq` return (x, inp)
 
+-- | The 'Layout' type describes how how to run the layout rule for
+--   a given sequence of tokens.
+data Layout tok = Layout
+  { beginsLayout :: tok -> Bool
+    -- ^ True when this token begins layout
+  , endsLayout :: tok -> Bool
+    -- ^ True when this token explicitly ends layout
+  , sepToken :: SourceRange -> Lexeme tok
+    -- ^ The separator token
+  , startToken :: SourceRange -> Lexeme tok
+    -- ^ Layout block starting token
+  , endToken :: SourceRange -> Lexeme tok
+    -- ^ Layout block ending token
+  }
 
+-- | Perform the layout algorithm for indentation-sensitive parsing.
+-- This uses a simple algorithm analogous to Haskell's algorithm described
+-- <https://www.haskell.org/onlinereport/lexemes.html#sect2.7 in the Haskell report>,
+-- which can insert synthetic delimiter and sepearator tokens based on
+-- the relative indentations of the tokens in a token stream.
+--
+-- The 'Layout' type lets you specify which tokens trigger insertion of
+-- a synthetic open bracket, which trigger insertion of a synthetic close
+-- bracket, and which tokens to use for the synthetic open brackets, close
+-- backets, and semicolon. The resulting token stream is unmodified except
+-- for the insertion of the layout-related tokens.
+layout :: Layout t -> [Lexeme t] -> [Lexeme t]
+layout Layout { .. } = go Nothing []
+  where
+  startCol SourceRange { sourceFrom = SourcePos { .. } } = sourceColumn
 
+  currentLevel (loc : _) = startCol loc
+  currentLevel []        = 0
+
+  getRange Lexeme { lexemeRange = l } = l
+
+  -- a new layout level has been started, emit a starting token, and push the
+  -- current level on the stack.
+  go Just{} stack (tok : toks) =
+    let loc = getRange tok
+    in startToken loc : tok : go Nothing (loc:stack) toks
+
+  go (Just loc) stack [] =
+    startToken loc : go Nothing (loc : stack) []
+
+  go Nothing stack ts@(tok : toks)
+
+    -- when the next token would close the current level
+    | startCol loc < currentLevel stack =
+      endToken loc : go Nothing (tail stack) ts
+
+    | beginsLayout val =
+      let sepToks | startCol loc == currentLevel stack = [sepToken loc]
+                  | otherwise                          = []
+       in sepToks ++ tok : go (Just loc) stack toks
+
+    | endsLayout val =
+      endToken loc : tok : go Nothing (tail stack) toks
+
+    | startCol loc == currentLevel stack =
+      sepToken loc : tok : go Nothing stack toks
+
+    | otherwise =
+      tok : go Nothing stack toks
+    where Lexeme { lexemeRange = loc, lexemeToken = val } = tok
+
+  go _ stack [] =
+    [ endToken loc | loc <- stack ]
