@@ -88,7 +88,8 @@ moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
 
 -- | A range in the source code.
 data SourceRange = SourceRange
-  { sourceFrom :: !SourcePos
+  { sourceFile :: !Text
+  , sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
   } deriving (Show, Eq)
 
@@ -97,13 +98,15 @@ prettySourceRange x = prettySourcePos (sourceFrom x) ++ "--" ++
                       prettySourcePos (sourceTo x)
 
 instance NFData SourceRange where
-  rnf (SourceRange x y) = rnf (x,y)
+  rnf (SourceRange t x y) = rnf (t,x,y)
 
 class HasRange t where
   range :: t -> SourceRange
 
 instance HasRange SourcePos where
-  range p = SourceRange { sourceFrom = p, sourceTo = p }
+  range p = SourceRange { sourceFile = Text.empty
+                        , sourceFrom = p
+                        , sourceTo   = p }
 
 instance HasRange SourceRange where
   range = id
@@ -116,9 +119,12 @@ instance (HasRange a, HasRange b) => HasRange (Either a b) where
   range (Right x) = range x
 
 (<->) :: (HasRange a, HasRange b) => a -> b -> SourceRange
-x <-> y = SourceRange { sourceFrom = sourceFrom (range x)
+x <-> y = SourceRange { sourceFile = sourceFile xr
+                      , sourceFrom = sourceFrom xr
                       , sourceTo   = sourceTo   (range y)
                       }
+  where
+  xr = range x
 
 
 --------------------------------------------------------------------------------
