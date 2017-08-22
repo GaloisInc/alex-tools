@@ -1,11 +1,12 @@
 {-# LANGUAGE TemplateHaskell, CPP #-}
 module AlexTools
   ( -- * Lexer Basics
-    initialInput, Input(..)
+    initialInput, Input(..), inputFile
   , Lexeme(..)
   , SourcePos(..), startPos, beforeStartPos
   , SourceRange(..)
   , prettySourcePos, prettySourceRange
+  , prettySourcePosLong, prettySourceRangeLong
   , HasRange(..)
   , (<->)
   , moveSourcePos
@@ -61,20 +62,32 @@ data SourcePos = SourcePos
   { sourceIndex   :: !Int
   , sourceLine    :: !Int
   , sourceColumn  :: !Int
+  , sourceFile    :: !Text
   } deriving (Show, Eq)
 
+-- | Pretty print the source position without the file name.
 prettySourcePos :: SourcePos -> String
 prettySourcePos x = show (sourceLine x) ++ ":" ++ show (sourceColumn x)
 
+-- | Pretty print the source position, including the file name.
+prettySourcePosLong :: SourcePos -> String
+prettySourcePosLong x =
+  Text.unpack (sourceFile x) ++ ":" ++
+  show (sourceLine x) ++ ":" ++
+  show (sourceColumn x)
+
+
+
 
 instance NFData SourcePos where
-  rnf (SourcePos x y z) = rnf (x,y,z)
+  rnf (SourcePos w x y z) = rnf (w,x,y,z)
 
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
 moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
                               , sourceLine   = newLine
                               , sourceColumn = newColumn
+                              , sourceFile   = sourceFile p
                               }
   where
   line   = sourceLine p
@@ -88,24 +101,38 @@ moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
 
 -- | A range in the source code.
 data SourceRange = SourceRange
-  { sourceFile :: !Text
-  , sourceFrom :: !SourcePos
+  { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
   } deriving (Show, Eq)
 
+-- | Pretty print the range, without the file name
 prettySourceRange :: SourceRange -> String
 prettySourceRange x = prettySourcePos (sourceFrom x) ++ "--" ++
                       prettySourcePos (sourceTo x)
 
+-- | Pretty print the range, including the file name.
+prettySourceRangeLong :: SourceRange -> String
+prettySourceRangeLong x
+  | sourceFile pfrom == sourceFile pto =
+    Text.unpack (sourceFile pfrom) ++ ":" ++
+    prettySourcePos pfrom ++ "--" ++
+    prettySourcePos pto
+  | otherwise = prettySourcePosLong pfrom ++ "--" ++
+                prettySourcePosLong pto
+  where
+  pfrom = sourceFrom x
+  pto   = sourceTo x
+
+
+
 instance NFData SourceRange where
-  rnf (SourceRange t x y) = rnf (t,x,y)
+  rnf (SourceRange x y) = rnf (x,y)
 
 class HasRange t where
   range :: t -> SourceRange
 
 instance HasRange SourcePos where
-  range p = SourceRange { sourceFile = Text.empty
-                        , sourceFrom = p
+  range p = SourceRange { sourceFrom = p
                         , sourceTo   = p }
 
 instance HasRange SourceRange where
@@ -119,13 +146,9 @@ instance (HasRange a, HasRange b) => HasRange (Either a b) where
   range (Right x) = range x
 
 (<->) :: (HasRange a, HasRange b) => a -> b -> SourceRange
-x <-> y = SourceRange { sourceFile = sourceFile xr
-                      , sourceFrom = sourceFrom xr
+x <-> y = SourceRange { sourceFrom = sourceFrom (range x)
                       , sourceTo   = sourceTo   (range y)
                       }
-  where
-  xr = range x
-
 
 --------------------------------------------------------------------------------
 
@@ -205,26 +228,32 @@ data Input = Input
   }
 
 -- | Prepare the text for lexing.
-initialInput :: Text -> Input
-initialInput str = Input
-  { inputPos      = startPos
-  , inputPrev     = beforeStartPos
+initialInput :: Text {- ^ Where the text came from -} ->
+                Text {- ^ The text to lex -} -> Input
+initialInput file str = Input
+  { inputPos      = startPos file
+  , inputPrev     = beforeStartPos file
   , inputPrevChar = '\n'    -- end of the virtual previous line
   , inputText     = str
   }
 
-startPos :: SourcePos
-startPos = SourcePos { sourceIndex   = 0
-                     , sourceLine    = 1
-                     , sourceColumn  = 1
-                     }
+startPos :: Text {- ^ Name of file/thing containing this -} -> SourcePos
+startPos file = SourcePos { sourceIndex   = 0
+                          , sourceLine    = 1
+                          , sourceColumn  = 1
+                          , sourceFile    = file
+                          }
 
-beforeStartPos :: SourcePos
-beforeStartPos = SourcePos { sourceIndex   = -1
-                           , sourceLine    = 0
-                           , sourceColumn  = 0
-                           }
+beforeStartPos :: Text -> SourcePos
+beforeStartPos file = SourcePos { sourceIndex   = -1
+                                , sourceLine    = 0
+                                , sourceColumn  = 0
+                                , sourceFile    = file
+                                }
 
+-- | The file/thing for the current position.
+inputFile :: Input -> Text
+inputFile = sourceFile . inputPos
 
 --------------------------------------------------------------------------------
 -- | Lexer configuration.

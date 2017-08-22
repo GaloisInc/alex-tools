@@ -1,5 +1,5 @@
 name:                alex-tools
-version:             0.2.0.1
+version:             0.3
 synopsis:            A set of functions for a common use case of Alex.
 description:         This captures a common patter for using Alex.
 license:             ISC
