@@ -265,7 +265,7 @@ data LexerConfig s t = LexerConfig
   , lexerStateMode :: s -> Int
     -- ^ Determine the current lexer mode from the lexer's state.
 
-  , lexerEOF       :: s -> [Lexeme t]
+  , lexerEOF       :: s -> SourcePos -> [Lexeme t]
     -- ^ Emit some lexemes at the end of the input.
   }
 
@@ -275,7 +275,7 @@ simpleLexer :: LexerConfig () t
 simpleLexer = LexerConfig
   { lexerInitialState = ()
   , lexerStateMode = \_ -> 0
-  , lexerEOF       = \_ -> []
+  , lexerEOF       = \_ _ -> []
   }
 
 
@@ -298,7 +298,7 @@ makeLexer =
      let p ~> e = match p (normalB e) []
          body go mode inp cfg =
            caseE [| $alexScanUser $mode $inp (lexerStateMode $cfg $mode) |]
-             [ alexEOF   ~> [| lexerEOF $cfg $mode |]
+             [ alexEOF   ~> [| lexerEOF $cfg $mode (inputPrev $inp) |]
              , alexError ~> [| error "internal error in lexer (AlexTools.hs)" |]
              , alexSkip  ~> [| $go $mode $xE |]
              , alexToken ~> [| case runA $zE $inp $xE $yE $mode of
