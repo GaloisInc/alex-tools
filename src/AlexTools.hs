@@ -207,10 +207,11 @@ lexeme :: t -> Action s [Lexeme t]
 lexeme tok =
   do r   <- matchRange
      txt <- matchText
-     return [ Lexeme { lexemeRange = r
-                     , lexemeToken = tok
-                     , lexemeText  = txt
-                     } ]
+     let l = Lexeme { lexemeRange = r
+                    , lexemeToken = tok
+                    , lexemeText  = txt
+                    }
+     l `seq` return [ l ]
 
 -- | Information about the lexer's input.
 data Input = Input
