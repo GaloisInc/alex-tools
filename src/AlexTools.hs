@@ -3,7 +3,7 @@ module AlexTools
   ( -- * Lexer Basics
     initialInput, Input(..), inputFile
   , Lexeme(..)
-  , SourcePos(..), startPos, beforeStartPos
+  , SourcePos(..), startPos, beforeStartPos, prevPos
   , SourceRange(..)
   , prettySourcePos, prettySourceRange
   , prettySourcePosLong, prettySourceRangeLong
@@ -251,6 +251,26 @@ beforeStartPos file = SourcePos { sourceIndex   = -1
                                 , sourceColumn  = 0
                                 , sourceFile    = file
                                 }
+
+{- | Move one position back.  Assumes that newlines use a single bytes.
+
+This function is intended to be used when starting the lexing somewhere
+in the middle of the input, for example, if we are implementing a quasi
+quoter, and the previous part of the input is not in our language.
+-}
+prevPos :: SourcePos -> SourcePos
+prevPos p
+  | sourceColumn p > 1 = p { sourceColumn = sourceColumn p - 1
+                           , sourceIndex = sourceIndex p - 1
+                           }
+
+  | sourceLine p > 1   = p { sourceLine   = sourceLine p - 1
+                           , sourceColumn = 1
+                           , sourceIndex  = sourceIndex p - 1
+                           }
+
+  | otherwise          = beforeStartPos (sourceFile p)
+
 
 -- | The file/thing for the current position.
 inputFile :: Input -> Text
