@@ -80,7 +80,7 @@ prettySourcePosLong x =
 
 
 instance NFData SourcePos where
-  rnf (SourcePos w x y z) = rnf (w,x,y,z)
+  rnf (SourcePos {}) = ()
 
 -- | Update a 'SourcePos' for a particular matched character
 moveSourcePos :: Char -> SourcePos -> SourcePos
