@@ -12,7 +12,7 @@ module AlexToolsBin
   , moveSourcePos
 
     -- * Writing Lexer Actions
-  , Action
+  , Action(..)
 
     -- ** Lexemes
   , lexeme
