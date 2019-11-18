@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, CPP #-}
+{-# LANGUAGE TemplateHaskell, CPP, DeriveLift #-}
 module AlexTools
   ( -- * Lexer Basics
     initialInput, Input(..), inputFile
@@ -45,6 +45,7 @@ import           Data.Text(Text)
 import qualified Data.Text as Text
 import           Control.Monad(liftM,ap,replicateM)
 import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 #if !MIN_VERSION_base(4,8,0)
 import           Control.Applicative
 #endif
@@ -63,7 +64,7 @@ data SourcePos = SourcePos
   , sourceLine    :: !Int
   , sourceColumn  :: !Int
   , sourceFile    :: !Text
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Lift)
 
 -- | Pretty print the source position without the file name.
 prettySourcePos :: SourcePos -> String
@@ -103,7 +104,7 @@ moveSourcePos c p = SourcePos { sourceIndex  = sourceIndex p + 1
 data SourceRange = SourceRange
   { sourceFrom :: !SourcePos
   , sourceTo   :: !SourcePos
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Lift)
 
 -- | Pretty print the range, without the file name
 prettySourceRange :: SourceRange -> String
