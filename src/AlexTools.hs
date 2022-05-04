@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell, CPP, DeriveLift #-}
 module AlexTools
   ( -- * Lexer Basics
-    initialInput, Input(..), inputFile
+    initialInput, initialInputAt, Input(..), inputFile
   , Lexeme(..)
   , SourcePos(..), startPos, beforeStartPos, prevPos
   , SourceRange(..)
@@ -238,6 +238,24 @@ initialInput file str = Input
   , inputPrevChar = '\n'    -- end of the virtual previous line
   , inputText     = str
   }
+
+-- | Prepare the text for lexing, starting at a particular position.
+-- This is useful when the document is not at the start of the file.
+-- Since: 0.6
+initialInputAt ::
+  SourcePos {- ^ Starting poistion -} ->
+  Text {- ^ The text to lex, not including any preceeding text -} ->
+  Input
+initialInputAt start str = Input
+  { inputPos      = start
+  , inputPrev     = start { sourceIndex   = sourceIndex start - 1
+                          , sourceColumn  = sourceColumn start - 1
+                          }
+  , inputPrevChar = '\n'  -- just something
+  , inputText     = str
+  }
+
+
 
 startPos :: Text {- ^ Name of file/thing containing this -} -> SourcePos
 startPos file = SourcePos { sourceIndex   = 0
